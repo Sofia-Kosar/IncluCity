@@ -10,30 +10,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Клон репозиторію
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # 2️⃣ Встановлюємо Node.js для frontend
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # 3️⃣ Встановлюємо Java 22 для backend
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '22'
 
-      # 4️⃣ Build backend (Spring Boot)
       - name: Build backend
         run: |
           cd server
+          chmod +x mvnw
           ./mvnw clean package -DskipTests
 
-      # 5️⃣ Build frontend (Next.js)
       - name: Build frontend
         run: |
           cd client
