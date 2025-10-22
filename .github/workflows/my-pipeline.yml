@@ -10,30 +10,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # 1️⃣ Клон репозиторію
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      # 2️⃣ Встановлюємо Node.js для frontend
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-      - name: Build code
+      # 3️⃣ Встановлюємо Java 22 для backend
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '22'
+
+      # 4️⃣ Build backend (Spring Boot)
+      - name: Build backend
         run: |
-          # Піднімаємо базу даних
-          docker compose -f docker-compose.yml up -d db
+          cd server
+          ./mvnw clean package -DskipTests
 
-          # Чекаємо, поки MySQL стане доступною
-          echo "Waiting for MySQL to be ready..."
-          until docker exec $(docker ps -q -f name=inclucity_mine-db-1) mysqladmin ping -uroot -p12345 --silent; do
-            sleep 5
-            echo "Still waiting..."
-          done
-          echo "MySQL is ready!"
-
-          # Піднімаємо backend
-          docker compose -f docker-compose.yml up -d backend
-
-          # Піднімаємо frontend
-          docker compose -f docker-compose.yml up -d client
-
-          # Перевіряємо, що контейнери працюють
-          docker ps
+      # 5️⃣ Build frontend (Next.js)
+      - name: Build frontend
+        run: |
+          cd client
+          npm install
+          npm run build
