@@ -19,21 +19,21 @@ jobs:
       - name: Build code
         run: |
           # Піднімаємо базу даних
-          docker-compose -f docker-compose.yml up -d db
+          docker compose -f docker-compose.yml up -d db
 
           # Чекаємо, поки MySQL стане доступною
           echo "Waiting for MySQL to be ready..."
-          until docker exec $(docker ps -q -f name=my_project_db_1) mysqladmin ping -uroot -p12345 --silent; do
+          until docker exec $(docker ps -q -f name=db) mysqladmin ping -uroot -p12345 --silent; do
             sleep 5
             echo "Still waiting..."
           done
           echo "MySQL is ready!"
 
           # Піднімаємо backend
-          docker-compose -f docker-compose.yml up -d backend
+          docker compose -f docker-compose.yml up -d backend
 
           # Піднімаємо frontend
-          docker-compose -f docker-compose.yml up -d client
+          docker compose -f docker-compose.yml up -d client
 
           # Перевіряємо, що контейнери працюють
           docker ps
