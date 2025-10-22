@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -25,9 +26,9 @@ jobs:
           java-version: '22'
 
       - name: Build backend
-  run: |
-    cd server
-    mvn clean package -DskipTests
+        run: |
+          cd server
+          mvn clean package -DskipTests
 
       - name: Build frontend
         run: |
