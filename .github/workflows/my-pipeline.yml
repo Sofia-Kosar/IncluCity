@@ -25,10 +25,9 @@ jobs:
           java-version: '22'
 
       - name: Build backend
-        run: |
-          cd server
-          chmod +x mvnw
-          ./mvnw clean package -DskipTests
+  run: |
+    cd server
+    mvn clean package -DskipTests
 
       - name: Build frontend
         run: |
