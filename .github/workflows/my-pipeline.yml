@@ -23,7 +23,7 @@ jobs:
 
           # Чекаємо, поки MySQL стане доступною
           echo "Waiting for MySQL to be ready..."
-          until docker exec $(docker ps -q -f name=db) mysqladmin ping -uroot -p12345 --silent; do
+          until docker exec $(docker ps -q -f name=inclucity_mine-db-1) mysqladmin ping -uroot -p12345 --silent; do
             sleep 5
             echo "Still waiting..."
           done
