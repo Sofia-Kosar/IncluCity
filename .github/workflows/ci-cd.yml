@@ -128,37 +128,13 @@ jobs:
     permissions:
       contents: read
       packages: read
-    defaults:
-      run:
-        # runner працює на Windows; "bash" там — це WSL-лаунчер без дистрибутива, тому PowerShell
-        shell: powershell
     steps:
       - uses: actions/checkout@v4
-      - name: Вхід у GHCR
+      - name: Розгортання (scripts/deploy.ps1)
+        # shell cmd + -ExecutionPolicy Bypass: на машині runner скрипти .ps1 за замовчуванням заблоковані
+        shell: cmd
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
-        run: |
-          $env:GH_TOKEN | docker login ghcr.io -u $env:GH_ACTOR --password-stdin
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-      - name: Оновлення контейнерів
-        env:
           ENV_FILE: ${{ vars.DEPLOY_ENV_FILE }}
-        run: |
-          $owner = $env:GITHUB_REPOSITORY_OWNER.ToLower()
-          $env:IMAGE_PREFIX = "ghcr.io/$owner/inclucity"
-          $env:IMAGE_TAG = "latest"
-          docker compose --env-file $env:ENV_FILE pull backend client
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          docker compose --env-file $env:ENV_FILE up -d --remove-orphans --no-build
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-      - name: Перевірка працездатності (health)
-        run: |
-          for ($i = 1; $i -le 30; $i++) {
-            $status = docker inspect --format '{{.State.Health.Status}}' inclucity-backend 2>$null
-            Write-Host "backend health: $status"
-            if ($status -eq 'healthy') { exit 0 }
-            Start-Sleep -Seconds 5
-          }
-          docker logs --tail=50 inclucity-backend
-          exit 1
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\deploy.ps1
