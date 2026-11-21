@@ -119,32 +119,38 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
   deploy:
-    name: Deploy — розгортання на сервері через SSH
+    name: Deploy — оновлення стеку на self-hosted runner
     needs: docker
-    # вмикається, коли в Settings → Variables задано DEPLOY_ENABLED=true
+    # вмикається, коли в Settings → Secrets and variables → Actions → Variables задано
+    # DEPLOY_ENABLED=true та DEPLOY_ENV_FILE (шлях до .env на машині з runner)
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
-    runs-on: ubuntu-latest
-    environment: production
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: read
+    defaults:
+      run:
+        shell: bash
     steps:
-      - name: Нижній регістр імені власника
-        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
-      - name: Оновлення стеку на сервері
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: OWNER_LC
-          script: |
-            set -e
-            cd ~/inclucity            # репозиторій + .env уже лежать на сервері
-            git pull --ff-only
-            export IMAGE_PREFIX=ghcr.io/${OWNER_LC}/inclucity IMAGE_TAG=latest
-            docker compose pull backend client
-            docker compose up -d --remove-orphans
-            # перевірка працездатності після розгортання
-            for i in $(seq 1 30); do
-              docker compose exec -T backend wget -qO- http://localhost:8081/actuator/health | grep -q UP && exit 0
-              sleep 5
-            done
-            echo "Backend не став healthy" && docker compose logs --tail=50 backend && exit 1
+      - uses: actions/checkout@v4
+      - name: Вхід у GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Оновлення контейнерів
+        env:
+          ENV_FILE: ${{ vars.DEPLOY_ENV_FILE }}
+        run: |
+          set -e
+          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
+          export IMAGE_PREFIX="ghcr.io/${OWNER_LC}/inclucity" IMAGE_TAG=latest
+          docker compose --env-file "$ENV_FILE" pull backend client
+          docker compose --env-file "$ENV_FILE" up -d --remove-orphans --no-build
+      - name: Перевірка працездатності (health)
+        run: |
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' inclucity-backend 2>/dev/null || echo none)
+            echo "backend health: $status"
+            [ "$status" = "healthy" ] && exit 0
+            sleep 5
+          done
+          docker logs --tail=50 inclucity-backend
+          exit 1
