@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: ci-cd-${{ github.ref }}
-  cancel-in-progress: true
+  # на main запуски стають у чергу (щоб не скасувати deploy), у PR — скасовуються
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
