@@ -130,27 +130,35 @@ jobs:
       packages: read
     defaults:
       run:
-        shell: bash
+        # runner працює на Windows; "bash" там — це WSL-лаунчер без дистрибутива, тому PowerShell
+        shell: powershell
     steps:
       - uses: actions/checkout@v4
       - name: Вхід у GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          $env:GH_TOKEN | docker login ghcr.io -u $env:GH_ACTOR --password-stdin
+          if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Оновлення контейнерів
         env:
           ENV_FILE: ${{ vars.DEPLOY_ENV_FILE }}
         run: |
-          set -e
-          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
-          export IMAGE_PREFIX="ghcr.io/${OWNER_LC}/inclucity" IMAGE_TAG=latest
-          docker compose --env-file "$ENV_FILE" pull backend client
-          docker compose --env-file "$ENV_FILE" up -d --remove-orphans --no-build
+          $owner = $env:GITHUB_REPOSITORY_OWNER.ToLower()
+          $env:IMAGE_PREFIX = "ghcr.io/$owner/inclucity"
+          $env:IMAGE_TAG = "latest"
+          docker compose --env-file $env:ENV_FILE pull backend client
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          docker compose --env-file $env:ENV_FILE up -d --remove-orphans --no-build
+          if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Перевірка працездатності (health)
         run: |
-          for i in $(seq 1 30); do
-            status=$(docker inspect --format '{{.State.Health.Status}}' inclucity-backend 2>/dev/null || echo none)
-            echo "backend health: $status"
-            [ "$status" = "healthy" ] && exit 0
-            sleep 5
-          done
+          for ($i = 1; $i -le 30; $i++) {
+            $status = docker inspect --format '{{.State.Health.Status}}' inclucity-backend 2>$null
+            Write-Host "backend health: $status"
+            if ($status -eq 'healthy') { exit 0 }
+            Start-Sleep -Seconds 5
+          }
           docker logs --tail=50 inclucity-backend
           exit 1
