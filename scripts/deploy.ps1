@@ -8,9 +8,10 @@ function Assert-Ok($step) {
     if ($LASTEXITCODE -ne 0) { throw "Step '$step' failed with exit code $LASTEXITCODE" }
 }
 
-Write-Host '== Login to GHCR =='
+# Images in GHCR are public, so login is optional (needed only if packages are made private).
+Write-Host '== Login to GHCR (optional) =='
 $env:GH_TOKEN | docker login ghcr.io -u $env:GH_ACTOR --password-stdin
-Assert-Ok 'docker login'
+if ($LASTEXITCODE -ne 0) { Write-Host 'WARNING: docker login failed, continuing with anonymous pull (public images)' }
 
 $owner = $env:GITHUB_REPOSITORY_OWNER.ToLower()
 $env:IMAGE_PREFIX = "ghcr.io/$owner/inclucity"
