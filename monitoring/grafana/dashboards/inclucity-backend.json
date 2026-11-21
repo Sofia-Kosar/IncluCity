@@ -1,0 +1,91 @@
+{
+  "uid": "inclucity-backend",
+  "title": "IncluCity — Backend (Spring Boot)",
+  "tags": ["inclucity", "spring-boot"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Backend UP",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "up{job=\"inclucity-backend\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": {
+        "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }],
+        "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+        "color": { "mode": "thresholds" } } }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Uptime",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "process_uptime_seconds{job=\"inclucity-backend\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 3, "type": "stat", "title": "HTTP-запити, req/s",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{job=\"inclucity-backend\"}[1m]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2 } }
+    },
+    {
+      "id": 4, "type": "stat", "title": "Помилки 5xx, req/s",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{job=\"inclucity-backend\",status=~\"5..\"}[1m]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2,
+        "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.01 }] },
+        "color": { "mode": "thresholds" } } }
+    },
+    {
+      "id": 5, "type": "stat", "title": "Активні з'єднання БД (Hikari)",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "hikaricp_connections_active{job=\"inclucity-backend\"}", "refId": "A" }]
+    },
+    {
+      "id": 6, "type": "stat", "title": "CPU процесу",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "process_cpu_usage{job=\"inclucity-backend\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "HTTP-запити за статусом",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"inclucity-backend\"}[1m]))", "legendFormat": "{{status}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Затримка HTTP p95",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"inclucity-backend\"}[5m])))", "legendFormat": "{{uri}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "JVM heap, байти",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(jvm_memory_used_bytes{job=\"inclucity-backend\",area=\"heap\"})", "legendFormat": "used", "refId": "A" },
+        { "expr": "sum(jvm_memory_max_bytes{job=\"inclucity-backend\",area=\"heap\"})", "legendFormat": "max", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "JVM потоки та GC-паузи",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "jvm_threads_live_threads{job=\"inclucity-backend\"}", "legendFormat": "live threads", "refId": "A" },
+        { "expr": "rate(jvm_gc_pause_seconds_sum{job=\"inclucity-backend\"}[1m])", "legendFormat": "GC pause s/s", "refId": "B" }
+      ]
+    }
+  ]
+}

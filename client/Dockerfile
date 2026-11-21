@@ -9,6 +9,9 @@ WORKDIR /app
 
 ARG NEXT_PUBLIC_API_URL=/api/v1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# адреса backend для проксі /api/* (rewrites вшиваються під час next build)
+ARG BACKEND_URL=http://backend-service:8080
+ENV BACKEND_URL=${BACKEND_URL}
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

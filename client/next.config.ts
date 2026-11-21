@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://backend-service:8080/api/:path*",
+        // BACKEND_URL задається на етапі збірки (docker compose: http://backend:8080,
+        // Kubernetes: http://backend-service:8080)
+        destination: `${process.env.BACKEND_URL ?? "http://backend-service:8080"}/api/:path*`,
       },
     ];
   },

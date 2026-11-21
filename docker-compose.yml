@@ -1,42 +1,86 @@
-version: '3.8'
+name: inclucity
+
 services:
-
-  client:
-    build:
-      context: ./client
-      target: production
-    ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8082}
-    env_file:
-      - ./client/.env
-    restart: unless-stopped
-
   db:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: 12345
-      MYSQL_DATABASE: hackathon_2025_test
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?задайте MYSQL_ROOT_PASSWORD у .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-hackathon_2025_test}
+    volumes:
+      - db-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p12345"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   backend:
-    container_name: inclucity-backend
+    image: ${IMAGE_PREFIX:-inclucity}-backend:${IMAGE_TAG:-latest}
     build: ./server
+    container_name: inclucity-backend
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "8080:8080"   # REST API + Swagger UI
+      # 8081 (Actuator/Prometheus) навмисно НЕ публікується — доступний лише в мережі compose
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/hackathon_2025_test
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 12345
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      DB_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE:-hackathon_2025_test}
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?задайте JWT_SECRET_KEY у .env}
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+
+  client:
+    image: ${IMAGE_PREFIX:-inclucity}-client:${IMAGE_TAG:-latest}
+    build:
+      context: ./client
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
+        BACKEND_URL: http://backend:8080
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?задайте GRAFANA_ADMIN_PASSWORD у .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+
+volumes:
+  db-data:
+  prometheus-data:
+  grafana-data:
