@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/hackathon_2025_test
-    username: root
-    password: 12345
+    url: ${DB_URL:jdbc:mysql://localhost:3306/hackathon_2025_test}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:12345}
   jpa:
     hibernate:
       ddl-auto: none
@@ -12,13 +12,30 @@ spring:
     name: "server"
 
 app:
-  base-url: http://localhost:8080
+  base-url: ${APP_BASE_URL:http://localhost:8080}
 
 server:
   port: 8080
 
+# Actuator + Micrometer: метрики для Prometheus.
+# Порт 8081 використовується лише всередині docker-мережі (назовні не публікується).
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 jwt:
-  secret-key: "5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437"
+  secret-key: ${JWT_SECRET_KEY:5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437}
   access-token:
     expiration: 3600000
   refresh-token:
