@@ -3,3 +3,4 @@
 .idea/
 .vscode/
 server/target/
+.docs/
