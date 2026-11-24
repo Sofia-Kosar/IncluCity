@@ -165,7 +165,7 @@ const MemoizedLogo = memo(function Logo() {
       href="/"
       className="fixed top-4 left-4 z-40 px-4 py-2 bg-white/90 backdrop-blur-sm shadow-lg rounded-lg border border-gray-200"
     >
-      <span className="text-xl text-primary">IncluCity</span>
+      <span className="text-xl text-primary">IncluCitytest</span>
     </Link>
   );
 });
